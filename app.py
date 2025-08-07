@@ -19,10 +19,12 @@ with col2:
 box_size = st.slider("QR Code Size", min_value=5, max_value=20, value=10)
 
 content = None
+valid = False  # Flag for valid content
 
+# --- INPUT SECTIONS ---
 if option == "URL":
     url = st.text_input("Enter the URL:")
-    
+
     def is_valid_url(url):
         parsed = urlparse(url)
         return all([parsed.scheme, parsed.netloc])
@@ -32,13 +34,13 @@ if option == "URL":
             url = "https://" + url  # Auto-fix missing scheme
         if is_valid_url(url):
             content = url
+            valid = True
         else:
             st.error("Please enter a valid URL (e.g., https://example.com)")
 
-
 elif option == "Plain Text":
     content = st.text_area("Enter the plain text to encode:")
-
+    valid = bool(content)
 
 elif option == "Email Address":
     email = st.text_input("Enter the email address:")
@@ -55,31 +57,39 @@ elif option == "Email Address":
         if query:
             mailto += "?" + "&".join(query)
         content = mailto
+        valid = True
+    elif email == "":
+        valid = False
 
+# --- CENTERED SEND BUTTON ---
+center_col = st.columns(3)
+with center_col[1]:
+    send = st.button("🚀 Send", use_container_width=True)
 
-if content:
-    # Generate QR code
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=box_size,
-        border=4,
-    )
-    qr.add_data(content)
-    qr.make(fit=True)
+# --- GENERATE QR CODE AFTER SEND ---
+if send:
+    if content and valid:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=box_size,
+            border=4,
+        )
+        qr.add_data(content)
+        qr.make(fit=True)
 
-    img = qr.make_image(fill_color=fill, back_color=bg)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    byte_im = buf.getvalue()
+        img = qr.make_image(fill_color=fill, back_color=bg)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        byte_im = buf.getvalue()
 
-    st.image(byte_im, caption="Scan this QR code", use_container_width=True)
+        st.image(byte_im, caption="Scan this QR code", use_container_width=True)
 
-    st.download_button(
-        label="⬇️ Download QR Code",
-        data=byte_im,
-        file_name="qr_code.png",
-        mime="image/png",
-    )
-else:
-    st.info("Enter the information above to generate a QR code.")
+        st.download_button(
+            label="⬇️ Download QR Code",
+            data=byte_im,
+            file_name="qr_code.png",
+            mime="image/png",
+        )
+    else:
+        st.warning("Please fill in all required fields to generate the QR code.")
