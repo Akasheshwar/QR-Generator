@@ -4,7 +4,7 @@ import io
 from urllib.parse import urlparse, quote
 
 st.set_page_config(page_title="QR Code Generator", page_icon="🔗")
-st.title("🔳 Multi-Type QR Code Generator")
+st.title("🔳 QR Code Generator")
 
 option = st.selectbox("Select what you'd like to encode in the QR code:", [
     "URL", "Plain Text", "Email Address"
@@ -93,4 +93,5 @@ if send:
         )
     else:
         st.warning("Please fill in all required fields to generate the QR code.")
+
 
