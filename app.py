@@ -205,3 +205,15 @@ elif st.session_state.page == "ai":
             "summary": short_summary,
             "full": full_reply
         })
+st.markdown("""
+    <div style="text-align:center; margin-top:4rem; font-size:0.8rem; color:gray;">
+        <h3 style="margin-bottom:0.2rem;">About Us</h3>
+        <p style="margin:0 0 0.8rem 0; max-width:400px; margin-left:auto; margin-right:auto;">
+            Welcome to Qobra! Easy tools for QR codes and AI assistance to boost your productivity and creativity.
+        </p>
+        <h4 style="margin-bottom:0.2rem;">Created By</h4>
+        <p style="margin:0; line-height:1.3;">
+            A.V.Gowtham Siddharth<br>Akash.E<br>Adarsh Kumar<br>Prathviraj
+        </p>
+    </div>
+""", unsafe_allow_html=True)
