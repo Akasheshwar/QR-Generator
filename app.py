@@ -2,96 +2,206 @@ import streamlit as st
 import qrcode
 import io
 from urllib.parse import urlparse, quote
+import google.generativeai as genai
+from io import BytesIO
 
-st.set_page_config(page_title="QR Code Generator", page_icon="🔗")
-st.title("🔳 QR Code Generator")
+# ---- Gemini API Setup ----
+genai.configure(api_key="AIzaSyAgXwJkzbpEUr-KEoM-iLH5W5ZAWpLc878")
+model = genai.GenerativeModel("gemini-2.5-pro")
 
-option = st.selectbox("Select what you'd like to encode in the QR code:", [
-    "URL", "Plain Text", "Email Address"
-])
+# ---- Set up page config ----
+st.set_page_config(page_title="Qobra", page_icon="🔮")
 
-col1, col2 = st.columns(2)
-with col1:
-    fill = st.color_picker("QR Code Color", "#000000")
-with col2:
-    bg = st.color_picker("Background Color", "#FFFFFF")
+# ---- Custom CSS for Centering and Button Size ----
+st.markdown("""
+    <style>
+        .centered-title {
+            text-align: center;
+            font-size: 3rem;
+        }
+        .centered-subtitle {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        div.stButton > button {
+            width: 100%;
+            padding: 1.2rem;
+            font-size: 1.2rem;
+            border-radius: 10px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-box_size = st.slider("QR Code Size", min_value=5, max_value=20, value=10)
+# ---- Navigation via session state ----
+if "page" not in st.session_state:
+    st.session_state.page = "home"
 
-content = None
-valid = False  # Flag for valid content
+def go_to_page(page_name):
+    st.session_state.page = page_name
+    st.rerun()
 
-# --- INPUT SECTIONS ---
-if option == "URL":
-    url = st.text_input("Enter the URL:")
+# ========== HOME PAGE ==========
+if st.session_state.page == "home":
+    st.markdown("<h1 class='centered-title'>🔮 Qobra</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 class='centered-subtitle'>Our Services</h3>", unsafe_allow_html=True)
 
-    def is_valid_url(url):
-        parsed = urlparse(url)
-        return all([parsed.scheme, parsed.netloc])
+    col = st.columns([1, 2, 1])
+    with col[1]:
+        if st.button("📦 QR Generator"):
+            go_to_page("qr")
+        st.write("")  # Spacer
+        if st.button("🤖 AI Assistant"):
+            go_to_page("ai")
 
-    if url:
-        if not urlparse(url).scheme:
-            url = "https://" + url  # Auto-fix missing scheme
-        if is_valid_url(url):
-            content = url
-            valid = True
+# ========== QR GENERATOR ==========
+elif st.session_state.page == "qr":
+    st.title("🔮 Qobra QR Code Generator")
+
+    if st.button("⬅️ Back to Home", key="back_from_qr"):
+        go_to_page("home")
+
+    option = st.selectbox("Select what you'd like to encode in the QR code:", [
+        "URL", "Plain Text", "Email Address"
+    ])
+
+    col1, col2 = st.columns(2)
+    with col1:
+        fill = st.color_picker("QR Code Color", "#000000")
+    with col2:
+        bg = st.color_picker("Background Color", "#FFFFFF")
+
+    box_size = st.slider("QR Code Size", min_value=5, max_value=20, value=10)
+
+    content = None
+    valid = False
+
+    # Wrap inputs and generate button inside a form
+    with st.form("qr_form"):
+        if option == "URL":
+            url = st.text_input("Enter the URL:")
+
+            def is_valid_url(url):
+                parsed = urlparse(url)
+                return all([parsed.scheme, parsed.netloc])
+
+            if url:
+                if not urlparse(url).scheme:
+                    url = "https://" + url
+                if is_valid_url(url):
+                    content = url
+                    valid = True
+                else:
+                    st.error("Please enter a valid URL (e.g., https://example.com)")
+
+        elif option == "Plain Text":
+            content = st.text_area("Enter the plain text to encode:")
+            valid = bool(content)
+
+        elif option == "Email Address":
+            # Email fields outside form since Enter behavior not critical here
+            email = st.text_input("Enter the email address:")
+            subject = st.text_input("Subject (optional):")
+            body = st.text_area("Body (optional):")
+
+            if email:
+                mailto = f"mailto:{email}"
+                query = []
+                if subject:
+                    query.append(f"subject={quote(subject)}")
+                if body:
+                    query.append(f"body={quote(body)}")
+                if query:
+                    mailto += "?" + "&".join(query)
+                content = mailto
+                valid = True
+            elif email == "":
+                valid = False
+
+        send = st.form_submit_button("🚀 Generate QR")
+
+    if send:
+        if content and valid:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=box_size,
+                border=4,
+            )
+            qr.add_data(content)
+            qr.make(fit=True)
+
+            img = qr.make_image(fill_color=fill, back_color=bg)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            byte_im = buf.getvalue()
+
+            st.image(byte_im, caption="Scan this QR code", use_container_width=True)
+
+            st.download_button(
+                label="⬇️ Download QR Code",
+                data=byte_im,
+                file_name="qr_code.png",
+                mime="image/png",
+            )
         else:
-            st.error("Please enter a valid URL (e.g., https://example.com)")
+            st.warning("Please fill in all required fields to generate the QR code.")
 
-elif option == "Plain Text":
-    content = st.text_area("Enter the plain text to encode:")
-    valid = bool(content)
+# ========== AI ASSISTANT ==========
+elif st.session_state.page == "ai":
+    st.title("🔮 Qobra AI Assistant")
 
-elif option == "Email Address":
-    email = st.text_input("Enter the email address:")
-    subject = st.text_input("Subject (optional):")
-    body = st.text_area("Body (optional):")
+    if st.button("⬅️ Back to Home", key="back_from_ai"):
+        go_to_page("home")
 
-    if email:
-        mailto = f"mailto:{email}"
-        query = []
-        if subject:
-            query.append(f"subject={quote(subject)}")
-        if body:
-            query.append(f"body={quote(body)}")
-        if query:
-            mailto += "?" + "&".join(query)
-        content = mailto
-        valid = True
-    elif email == "":
-        valid = False
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# --- CENTERED SEND BUTTON ---
-center_col = st.columns(3)
-with center_col[1]:
-    send = st.button("🚀 Send", use_container_width=True)
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["summary"])
+            if message.get("full"):
+                with st.expander("🔽 View full response"):
+                    st.markdown(message["full"])
 
-# --- GENERATE QR CODE AFTER SEND ---
-if send:
-    if content and valid:
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=box_size,
-            border=4,
-        )
-        qr.add_data(content)
-        qr.make(fit=True)
+    user_input = st.chat_input("Ask me anything...")
 
-        img = qr.make_image(fill_color=fill, back_color=bg)
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        byte_im = buf.getvalue()
+    if user_input:
+        st.session_state.messages.append({"role": "user", "summary": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-        st.image(byte_im, caption="Scan this QR code", use_container_width=True)
+        with st.chat_message("assistant"):
+            with st.spinner("🍳 Cooking up your response..."):
+                try:
+                    response_full = model.generate_content(user_input)
 
-        st.download_button(
-            label="⬇️ Download QR Code",
-            data=byte_im,
-            file_name="qr_code.png",
-            mime="image/png",
-        )
-    else:
-        st.warning("Please fill in all required fields to generate the QR code.")
+                    if not response_full.parts:
+                        raise ValueError("No response generated by the model.")
 
+                    full_reply = response_full.text.strip()
 
+                    response_summary = model.generate_content(
+                        f"Summarize this in 2 sentences:\n\n{full_reply}"
+                    )
+
+                    if not response_summary.parts:
+                        raise ValueError("Failed to summarize the response.")
+
+                    short_summary = response_summary.text.strip()
+
+                except Exception as e:
+                    short_summary = f"⚠️ Error: {str(e)}"
+                    full_reply = ""
+
+            st.markdown(short_summary)
+
+            if full_reply:
+                with st.expander("🔽 View full response"):
+                    st.markdown(full_reply)
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "summary": short_summary,
+            "full": full_reply
+        })
