@@ -46,11 +46,10 @@ if st.session_state.page == "home":
     st.markdown("<h1 class='centered-title'>🔮 Qobra</h1>", unsafe_allow_html=True)
     st.markdown("<h3 class='centered-subtitle'>Our Services</h3>", unsafe_allow_html=True)
 
-    col = st.columns([1, 2, 1])
-    with col[1]:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
         if st.button("📦 QR Generator"):
             go_to_page("qr")
-        st.write("")  # Spacer
         if st.button("🤖 AI Assistant"):
             go_to_page("ai")
 
@@ -205,6 +204,7 @@ elif st.session_state.page == "ai":
             "summary": short_summary,
             "full": full_reply
         })
+
 st.markdown("""
     <div style="text-align:center; margin-top:4rem; font-size:0.8rem; color:gray;">
         <h3 style="margin-bottom:0.2rem;">About Us</h3>
